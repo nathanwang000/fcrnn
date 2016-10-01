@@ -1,0 +1,7 @@
+* TODO tasks
+** current sgd is flawed, need stack
+** TODO use tf to have a baseline for nn
+** TODO use tf to have a baseline for rnn
+** TODO add batch training to neuron.py
+** TODO try if one hot vector works
+** TODO observe what happens to the gradient if I let it backward long enough
