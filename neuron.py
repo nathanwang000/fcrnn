@@ -3,11 +3,7 @@ import test
 import problem
 import loss
 from math import e
-
-class Activation:
-    def __init__(self, forward=lambda x: max(x, 0), backward=lambda x: 1 if x>0 else 0):
-        self.forward = forward
-        self.backward = backward
+from Activation import Activation
 
 class NN: # nerual network
 

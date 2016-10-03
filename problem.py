@@ -10,7 +10,7 @@ class Data():
         self.n = len(x) if x is not None else n
         self.tr_p = tr_p
         if (x is None):
-            self.x = np.arange(n).reshape(n,1)
+            self.x = np.arange(n).reshape(n,1,1)
         else:
             self.x = x
         if (y is None):

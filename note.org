@@ -1,7 +1,11 @@
 * TODO tasks
-** current sgd is flawed, need stack
+** TODO handle variable length output
+** TODO gradient check
+** DONE current sgd is flawed, need stack (in fact not, just keep track in each computation step)
 ** TODO use tf to have a baseline for nn
 ** TODO use tf to have a baseline for rnn
-** TODO add batch training to neuron.py
-** TODO try if one hot vector works
-** TODO observe what happens to the gradient if I let it backward long enough
+** DONE add batch training
+** TODO add time into the mix
+** TODO implement a timer
+** TODO implement a multiplier
+total_loss = f(t) + loss | t is the time taken to from begin to output
