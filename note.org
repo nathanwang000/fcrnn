@@ -1,11 +1,12 @@
 * TODO tasks
 ** TODO handle variable length output
-** TODO gradient check
+** DONE gradient check dO/dW, dO/db
+** TODO gradient check dE/dW, dE/db
 ** DONE current sgd is flawed, need stack (in fact not, just keep track in each computation step)
 ** TODO use tf to have a baseline for nn
 ** TODO use tf to have a baseline for rnn
 ** DONE add batch training
-** TODO add time into the mix
+** TODO add variable time
 ** TODO implement a timer
 ** TODO implement a multiplier
 total_loss = f(t) + loss | t is the time taken to from begin to output
