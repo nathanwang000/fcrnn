@@ -1,5 +1,5 @@
 import numpy as np
-from Activation import relu, sigmoid
+from Activation import relu, sigmoid, idact
 from problem import Data
 from loss import se
 # for dense case
@@ -8,12 +8,14 @@ from scipy.linalg import block_diag as bd
 # from scipy.sparse import csr_matrix, block_diag as bd
 
 class FCNN: # fully connected nueral network
-    def __init__(self, nin, nhid, nout, \
-                 act=sigmoid, time=10, bs=64):
+    def __init__(self, nin, nhid, nout,
+                 Hact=sigmoid, Oact=idact,
+                 time=10, bs=64):
         self.nin = nin
         self.nhid = nhid
         self.nout = nout
         self.bs = bs
+        self.lr = 0.01
         self.time = time # maximum depth of the network
         assert(time > 0)
 
@@ -26,27 +28,29 @@ class FCNN: # fully connected nueral network
         self.mHH = np.ones((self.nhid, self.nhid))
         self.mHO = np.ones((self.nout, self.nhid))
         
-        self.IH = np.random.random((self.nhid, self.nin))
-        self.IO = np.random.random((self.nout, self.nin))
-        self.HH = np.random.random((self.nhid, self.nhid))
-        self.HO = np.random.random((self.nout, self.nhid))
+        self.IH = np.random.randn(self.nhid, self.nin)
+        self.IO = np.random.randn(self.nout, self.nin)
+        self.HH = np.random.randn(self.nhid, self.nhid)
+        self.HO = np.random.randn(self.nout, self.nhid)
 
-        self.bH = np.random.random((self.nhid,1))        
-        self.bO = np.random.random((self.nout,1))
+        self.bH = np.random.randn(self.nhid,1)        
+        self.bO = np.random.randn(self.nout,1)
 
         # gradient
         self.resetGrad()
 
         # activation
-        self.Hact = act
+        self.Hact = Hact
+        self.Oact = Oact
 
     def resetValue(self):
         self.I = np.zeros((self.nin, self.bs))
         self.H = np.zeros((self.nhid, self.bs))
         self.O = np.zeros((self.nout, self.bs))
-        self.pH = np.zeros((self.nhid, self.bs))
         self.pI = np.zeros((self.nin, self.bs))
-
+        self.pH = np.zeros((self.nhid, self.bs))
+        self.pO = np.zeros((self.nout, self.bs))
+        
     def resetGrad(self):
 
         self.gIH = np.zeros((self.nhid, self.nin))
@@ -68,14 +72,14 @@ class FCNN: # fully connected nueral network
                               self.bs))
         self._gbH = np.zeros((self.nhid, self.nhid, self.bs))
         
-    def update(self, lr=0.01):
+    def update(self):
         params = [self.IH, self.IO, self.HH,
                   self.HO, self.bH, self.bO]
         gparams = [self.gIH, self.gIO, self.gHH,
                    self.gHO, self.gbH, self.gbO]
         # update W, b
         for p, gp in zip(params, gparams):
-            p -= lr * gp
+            p -= self.lr/self.bs * gp
         # reset gradient
         self.resetGrad()
 
@@ -92,7 +96,10 @@ class FCNN: # fully connected nueral network
         # error = np.zeros((1,self.nout,self.bs))
         # assume row major
         for i in range(self.bs):
-            err = error[...,i]
+            err = error[...,i].\
+                  dot\
+                  (np.diag\
+                   (self.Oact.backward(self.pO[:,i].ravel())))
             self.gbH += err.dot(self._gbH[...,i]).\
                         reshape(self.gbH.shape)
             self.gbO += err.reshape(self.gbO.shape)
@@ -104,7 +111,7 @@ class FCNN: # fully connected nueral network
                         reshape(self.gHH.shape)
             self.gHO += err.dot(self._gHO[...,i]).\
                         reshape(self.gHO.shape)
-        return l
+        return l / self.bs
         
     def inputFeeder(self, batch):
         def feed():
@@ -146,15 +153,18 @@ class FCNN: # fully connected nueral network
             _gbH[...,i] = self.HO.dot(self._gbH[...,i])
 
         self._gIH, self._gHH, self._gbH = _gIH, _gHH, _gbH
-        self.O = self.IO.dot(self.pI)+self.HO.dot(self.H)+self.bO
+        self.pO = self.IO.dot(self.pI)+self.HO.dot(self.H)+self.bO
+        self.O = self.Oact.forward(self.pO)
 
     def randValue(self):
-        self.I = np.random.random((self.nin, self.bs))
-        self.H = np.random.random((self.nhid, self.bs))
-        self.O = np.random.random((self.nout, self.bs))
+        self.I = 100*np.random.randn(self.nin, self.bs)
+        self.H = 100*np.random.randn(self.nhid, self.bs)
+        self.O = 100*np.random.randn(self.nout, self.bs)
         
     def gradCheck(self):
-        t = np.random.randint(1,3)
+        t = np.random.randint(1,4)
+        delta = 1e-4
+        tolerence = 1e-3
         
         bs = self.bs
         self.bs = 1
@@ -162,7 +172,7 @@ class FCNN: # fully connected nueral network
         self.randValue()
         I = self.I.copy()
         H = self.H.copy()
-        O = self.O.copy()
+        O = self.pO.copy()
         self.resetGrad()
         fh = []
         for _ in range(t):
@@ -170,16 +180,16 @@ class FCNN: # fully connected nueral network
             fh.append(self.H.copy())
         self.freezeStep()
         self.resetGrad()                
-        fo = self.O.copy()
+        fo = self.pO.copy()
         fh.append(self.H.copy())
         
         def checkW(name):
             entity = getattr(self, name)
             self.I = I.copy()
             self.H = H.copy()
-            self.O = O.copy()
+            self.pO = O.copy()
             self.resetGrad()
-            delta = 1e-7
+
             x = np.random.randint(entity.shape[0])
             y = np.random.randint(entity.shape[1])
             o = np.random.randint(self.nout)
@@ -195,10 +205,14 @@ class FCNN: # fully connected nueral network
             self.freezeStep()
 
             g_entity = getattr(self, "_g"+name)            
-            foa = self.O.copy()
+            foa = self.pO.copy()
             gf = (foa-fo)/delta
             egf = g_entity[o, x*entity.shape[1]+y, 0]
-            print(name + ":", gf[o], egf)
+            if gf[o][0] != 0 and \
+               (gf[o][0] - egf) / gf[o][0] > tolerence:
+                print(name + ":", gf[o][0], egf)
+            else:
+                print(name + ":", "passed")
             entity[x,y] -= delta
 
         def checkB(name):
@@ -206,9 +220,8 @@ class FCNN: # fully connected nueral network
             entity = getattr(self, name)
             self.I = I.copy()
             self.H = H.copy()
-            self.O = O.copy()
+            self.pO = O.copy()
             self.resetGrad()
-            delta = 1e-6
             x = np.random.randint(entity.shape[0])
             o = np.random.randint(self.nout)            
             entity[x] += delta
@@ -218,18 +231,24 @@ class FCNN: # fully connected nueral network
             self.freezeStep()
 
             g_entity = getattr(self, "_g"+name)
-            foa = self.O.copy()
+            foa = self.pO.copy()
             gf = (foa-fo)/delta
             egf = g_entity[o, x, 0]
-            print(name + ":", gf[o], egf)
+            if gf[o][0] != 0 and \
+               (gf[o][0] - egf) / gf[o][0] > tolerence:
+                print(name + ":", gf[o][0], egf)
+            else:
+                print(name + ":", "passed")
             entity[x] -= delta
-        
+
+        print("gradient check:", "t=" + str(t))
         checkW("IO")
         checkW("HO")
-        checkW("IH") # for t > 1 not working          
-        checkW("HH") # for t > 1 not working
+        checkW("IH")
+        checkW("HH")
         checkB("H") # no need to check O as it must be right
 
+        # restore state
         self.bs = bs
         self.resetGrad()
         self.resetValue()
@@ -238,11 +257,13 @@ class FCNN: # fully connected nueral network
         nI = np.zeros_like(self.I)
         nH = self.IH.dot(self.I) + self.HH.dot(self.H) + self.bH
         nO = self.IO.dot(self.I) + self.HO.dot(self.H) + self.bO
-        self.pH = nH # before activation
+        self.pH = nH # H before activation
+        self.pO = nO # O before activation
 
         def forward():
             self.pI = self.I # previous I
-            self.I, self.H, self.O = nI, self.Hact.forward(nH), nO
+            self.I, self.H = nI, self.Hact.forward(nH)
+            self.O = self.Oact.forward(nO)
 
         def accGrad():
             for i in range(self.bs):
@@ -273,24 +294,28 @@ class FCNN: # fully connected nueral network
             batch = data.getBatch(self.bs)
             while batch:
                 l = self.grow(batch, loss)
-                print("e{:d} {} {}".format(epoch,
-                                           data.progress(),
-                                           l))
+                print("e{:d} {}\
+                {:.5f} {:.2f} {:.2f}".format(epoch,
+                                 data.progress(),
+                                 l,
+                                 np.average(self.O),
+                                 np.average(batch.y)))
                 batch = data.getBatch(self.bs)
             epoch += 1
         
 
 if __name__ == '__main__':
     # model
-    model = FCNN(1,30,1,sigmoid,time=5,bs=1)
+    model = FCNN(1,1,1,Hact=sigmoid,Oact=sigmoid,time=2,bs=1)
     # loss
     loss = se()
     # data
     n = 100
-    data = Data(f=lambda x: [1] if x>n/2 else [0], n=n)
+    # data = Data(f=lambda x: [1] if x>n/2 else [0], n=n)
+    data = Data(f=lambda x: [1], n=n)    
     data.shuffle()
     # check: TODO: add check for from error to gradcheck
     model.gradCheck()    
     # train
-    # model.train(data.getTr(), loss)
+    model.train(data.getTr(), loss)
 
