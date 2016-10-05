@@ -1,0 +1,25 @@
+#+TITLE: README
+#+DATE: <2016-10-05 Wed>
+#+AUTHOR: Jiaxuan Wang
+#+EMAIL: jiaxuan@umich.edu
+#+OPTIONS: ':nil *:t -:t ::t <:t H:3 \n:nil ^:t arch:headline author:t c:nil
+#+OPTIONS: creator:comment d:(not "LOGBOOK") date:t e:t email:nil f:t inline:t
+#+OPTIONS: num:t p:nil pri:nil stat:t tags:t tasks:t tex:t timestamp:t toc:nil
+#+OPTIONS: todo:t |:t
+#+CREATOR: Emacs 24.5.1 (Org mode 8.2.10)
+#+DESCRIPTION:
+#+EXCLUDE_TAGS: noexport
+#+KEYWORDS:
+#+LANGUAGE: en
+#+SELECT_TAGS: export
+
+* Overview
+This repository aims at developing an all powering fully connected recurrent
+neural network (don't google it, it doesn't exist ye :)). The idea is this
+network should consider all topological connections and learn which connection
+to keep by itself.
+
+* files
+- neuron.py: fcrnn in graph form (not tested)
+- fcnn.py: fully connected recurrent neural network in matrix form
+- baselines.py: tensor flow baselines to compare fcrnn against
