@@ -12,6 +12,9 @@ class Loss:
 
 class se(Loss): # squared error
 
+    def __init__(self):
+        pass
+    
     def forward(self, x, t):
         return np.sum(np.square(x-t))        
 

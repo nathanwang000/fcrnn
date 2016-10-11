@@ -114,6 +114,9 @@ class FCNN: # fully connected nueral network
         return l / self.bs
         
     def inputFeeder(self, batch):
+        self.bs = len(batch.x) #here
+        self.resetValue()
+        self.resetGrad()
         def feed():
             I = np.zeros((self.nin, self.bs))
             for i in range(len(batch.x)):
@@ -123,6 +126,21 @@ class FCNN: # fully connected nueral network
             self.I = I
         return feed
     
+    def getloss(self, data, loss):  # forward time timestep
+        self.t = 0
+        feed = self.inputFeeder(data)
+        while self.t < self.time:
+            feed()
+            self.step()
+            self.t += 1
+        # freeze time
+        # MAYBE: handle variable length output        
+        feed()
+        self.freezeStep()
+        l = self.openErrGate(data, loss)
+        self.resetGrad()
+        return l
+
     def grow(self, data, loss):  # forward time timestep
         self.t = 0
         feed = self.inputFeeder(data)
@@ -286,9 +304,9 @@ class FCNN: # fully connected nueral network
         accGrad()
         forward()
 
-    def train(self, data, loss):
+    def train(self, data, loss, max_iter=10000):
         epoch = 0
-        while True:
+        for _ in range(max_iter):
             data.reset() # reset pointer in data
             data.shuffle()
             batch = data.getBatch(self.bs)
@@ -297,7 +315,7 @@ class FCNN: # fully connected nueral network
                 print("e{:d} {}\
                 {:.5f} {:.2f} {:.2f}".format(epoch,
                                  data.progress(),
-                                 l,
+                                 self.getloss(data, loss),
                                  np.average(self.O),
                                  np.average(batch.y)))
                 batch = data.getBatch(self.bs)
@@ -306,16 +324,36 @@ class FCNN: # fully connected nueral network
 
 if __name__ == '__main__':
     # model
-    model = FCNN(1,1,1,Hact=sigmoid,Oact=sigmoid,time=2,bs=1)
+    model = FCNN(1,1,1,Hact=sigmoid,Oact=sigmoid,time=1,bs=10)
     # loss
     loss = se()
     # data
     n = 100
-    # data = Data(f=lambda x: [1] if x>n/2 else [0], n=n)
-    data = Data(f=lambda x: [1], n=n)    
+    data = Data(f=lambda x: [1] if x>n/2 else [0], n=n)
+    # data = Data(f=lambda x: [1], n=n)    
     data.shuffle()
     # check: TODO: add check for from error to gradcheck
-    model.gradCheck()    
+    model.gradCheck()
     # train
-    model.train(data.getTr(), loss)
+    # model.train(data.getTr(), loss, max_iter=100)
 
+    # try using tensor flow
+    import tensorflow as tf
+    sess = tf.Session()    
+    x = tf.placeholder(tf.float32, shape=[None, 1])
+    y_ = tf.placeholder(tf.float32, shape=[None, 1])
+
+    W = tf.Variable(tf.zeros([1,1]))
+    b = tf.Variable(tf.zeros([1]))
+    sess.run(tf.initialize_all_variables())
+
+    y = tf.nn.sigmoid(tf.matmul(x,W) + b)
+    se_loss = tf.reduce_mean(tf.square(y-y_))
+    train_step = tf.train.GradientDescentOptimizer(0.01).minimize(se_loss)
+
+    # for i in range(10000):
+    #     batch = data.getTr().getBatch(10)
+    #     train_step.run(feed_dict={x: batch.x.reshape(10,1), y_: batch.y}, session=sess)
+    #     print(se_loss.eval(feed_dict={x: data.getTr().x.reshape(100,1), y_: data.getTr().y}, session=sess))
+
+    

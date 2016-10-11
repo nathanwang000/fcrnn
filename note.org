@@ -1,12 +1,13 @@
 * TODO tasks
-** TODO handle variable length output
-** DONE gradient check dO/dW, dO/db
+** TODO restrict connectivity using mask, so easier for debug
 ** TODO gradient check dE/dW, dE/db
-** DONE current sgd is flawed, need stack (in fact not, just keep track in each computation step)
-** TODO use tf to have a baseline for nn
 ** TODO use tf to have a baseline for rnn
-** DONE add batch training
 ** TODO add variable time
 ** TODO implement a timer
 ** TODO implement a multiplier
 total_loss = f(t) + loss | t is the time taken to from begin to output
+** TODO handle variable length output
+** DONE gradient check dO/dW, dO/db
+** DONE current sgd is flawed, need stack (in fact not, just keep track in each computation step)
+** DONE add batch training
+** DONE use tf to have a baseline for nn
